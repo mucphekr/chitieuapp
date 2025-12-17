@@ -26,7 +26,8 @@ let sources = [];
 let wallets = []; // Danh sách ví động
 let currentWallet = ''; // Ví hiện tại đang xem
 
-const transactionTableBody = document.getElementById('transaction-table-body');
+// Biến cho History Section
+let selectedDate = null;
 const categorySelect = document.getElementById('category');
 const sourceSelect = document.getElementById('source');
 const walletSelect = document.getElementById('wallet');
@@ -55,22 +56,115 @@ document.addEventListener('DOMContentLoaded', function() {
     // Khởi tạo lịch
     renderCalendar();
     
-    // Đặt ngày mặc định là ngày hiện tại
-    document.getElementById('date').valueAsDate = new Date();
+    // Khởi tạo date picker
+    initDatePicker();
     
-    // Sự kiện chuyển tháng
+    // Sự kiện chuyển tháng (Calendar)
     document.getElementById('prev-month').addEventListener('click', function() { changeMonth(-1); });
     document.getElementById('next-month').addEventListener('click', function() { changeMonth(1); });
+    
+    // Sự kiện đóng chi tiết ngày
+    document.getElementById('close-date-detail').addEventListener('click', function() { closeDateDetail(); });
 
     // Thêm event listeners cho các form
     setupEventListeners();
 });
+
+// --- HÀM KHỞI TẠO DATE PICKER ---
+function initDatePicker() {
+    var daySelect = document.getElementById('date-day');
+    var monthSelect = document.getElementById('date-month');
+    var yearSelect = document.getElementById('date-year');
+    
+    // Populate years (từ năm hiện tại - 5 đến năm hiện tại + 2)
+    var currentYear = new Date().getFullYear();
+    yearSelect.innerHTML = '';
+    for (var y = currentYear - 5; y <= currentYear + 2; y++) {
+        var option = document.createElement('option');
+        option.value = y;
+        option.textContent = y;
+        yearSelect.appendChild(option);
+    }
+    
+    // Set current date
+    var today = new Date();
+    yearSelect.value = today.getFullYear();
+    monthSelect.value = today.getMonth() + 1;
+    updateDaysInMonth();
+    daySelect.value = today.getDate();
+    
+    // Event listeners để cập nhật số ngày khi thay đổi tháng/năm
+    monthSelect.addEventListener('change', updateDaysInMonth);
+    yearSelect.addEventListener('change', updateDaysInMonth);
+}
+
+function updateDaysInMonth() {
+    var daySelect = document.getElementById('date-day');
+    var monthSelect = document.getElementById('date-month');
+    var yearSelect = document.getElementById('date-year');
+    
+    var currentDay = parseInt(daySelect.value) || 1;
+    var month = parseInt(monthSelect.value);
+    var year = parseInt(yearSelect.value);
+    
+    // Tính số ngày trong tháng
+    var daysInMonth = new Date(year, month, 0).getDate();
+    
+    // Populate days
+    daySelect.innerHTML = '';
+    for (var d = 1; d <= daysInMonth; d++) {
+        var option = document.createElement('option');
+        option.value = d;
+        option.textContent = String(d).padStart(2, '0');
+        daySelect.appendChild(option);
+    }
+    
+    // Giữ ngày đã chọn nếu hợp lệ
+    if (currentDay > daysInMonth) {
+        daySelect.value = daysInMonth;
+    } else {
+        daySelect.value = currentDay;
+    }
+}
+
+function getSelectedDate() {
+    var day = document.getElementById('date-day').value;
+    var month = document.getElementById('date-month').value;
+    var year = document.getElementById('date-year').value;
+    return year + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+}
+
+function setSelectedDate(dateStr) {
+    var parts = dateStr.split('-');
+    if (parts.length === 3) {
+        var year = parseInt(parts[0]);
+        var month = parseInt(parts[1]);
+        var day = parseInt(parts[2]);
+        
+        document.getElementById('date-year').value = year;
+        document.getElementById('date-month').value = month;
+        updateDaysInMonth();
+        document.getElementById('date-day').value = day;
+    }
+}
 
 function setupEventListeners() {
     document.getElementById('add-transaction-form').addEventListener('submit', handleAddTransaction);
     document.getElementById('add-category-form').addEventListener('submit', handleAddCategory);
     document.getElementById('add-source-form').addEventListener('submit', handleAddSource);
     document.getElementById('add-wallet-form').addEventListener('submit', handleAddWallet);
+    
+    // Event listeners cho modal chỉnh sửa
+    document.getElementById('edit-wallet-form').addEventListener('submit', handleEditWallet);
+    document.getElementById('edit-transaction-form').addEventListener('submit', handleEditTransaction);
+    
+    // Đóng modal khi click bên ngoài
+    document.getElementById('edit-wallet-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeEditWalletModal();
+    });
+    document.getElementById('edit-transaction-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeEditTransactionModal();
+    });
 }
 
 
@@ -88,9 +182,12 @@ function setupRealtimeListeners() {
             transactions.push({ id: doc.id, ...data }); 
         });
         // Sau khi tải xong, vẽ lại giao diện
-        renderTransactions();
         calculateSummary();
         renderCalendar();
+        // Nếu đang chọn ngày, cập nhật lại danh sách giao dịch
+        if (selectedDate) {
+            renderTransactionsForDate(selectedDate);
+        }
     });
 
     // 2. Lắng nghe Dữ liệu Cài Đặt (Danh mục/Nguồn/Ví)
@@ -114,9 +211,12 @@ function setupRealtimeListeners() {
             renderWalletSelect();
             
             // Render lại khi có thay đổi
-            renderTransactions();
             calculateSummary();
             renderCalendar();
+            // Nếu đang chọn ngày, cập nhật lại danh sách giao dịch
+            if (selectedDate) {
+                renderTransactionsForDate(selectedDate);
+            }
         } else {
             // Lần đầu tiên chạy, tạo dữ liệu mặc định
             settingsDoc.set({
@@ -144,17 +244,27 @@ function renderWalletTabs() {
         tab.className = 'wallet-tab' + (wallet.id === currentWallet ? ' active' : '');
         tab.setAttribute('data-wallet', wallet.id);
         tab.innerHTML = wallet.icon + ' ' + wallet.name + 
+            '<span class="edit-wallet" data-wallet-id="' + wallet.id + '" title="Sửa ví">✏️</span>' +
             '<span class="delete-wallet" data-wallet-id="' + wallet.id + '" title="Xóa ví">×</span>';
         
         // Click vào tab để chọn ví
         tab.addEventListener('click', function(e) {
-            if (e.target.classList.contains('delete-wallet')) {
-                return; // Bỏ qua nếu click vào nút xóa
+            if (e.target.classList.contains('delete-wallet') || e.target.classList.contains('edit-wallet')) {
+                return; // Bỏ qua nếu click vào nút xóa hoặc sửa
             }
             selectWallet(wallet.id);
         });
         
         walletTabsContainer.appendChild(tab);
+    });
+    
+    // Thêm event listener cho nút sửa ví
+    document.querySelectorAll('.edit-wallet').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var walletId = this.getAttribute('data-wallet-id');
+            openEditWalletModal(walletId);
+        });
     });
     
     // Thêm event listener cho nút xóa ví
@@ -199,9 +309,12 @@ function selectWallet(walletId) {
     updateCurrentWalletDisplay();
     
     // Render lại giao diện
-    renderTransactions();
     calculateSummary();
     renderCalendar();
+    // Nếu đang chọn ngày, cập nhật lại danh sách giao dịch
+    if (selectedDate) {
+        renderTransactionsForDate(selectedDate);
+    }
 }
 
 // Cập nhật hiển thị ví đang xem
@@ -247,6 +360,10 @@ function handleAddWallet(e) {
     }
     
     wallets.push({ id: id, icon: icon, name: name });
+    
+    // Tự động chọn ví mới vừa tạo để có thể thêm giao dịch ngay
+    currentWallet = id;
+    
     updateSettings('wallets', wallets);
     
     e.target.reset();
@@ -279,6 +396,48 @@ function deleteWallet(walletId) {
             selectWallet(wallets[0].id);
         }
     }
+}
+
+// Mở modal chỉnh sửa ví
+function openEditWalletModal(walletId) {
+    var wallet = wallets.find(function(w) { return w.id === walletId; });
+    if (!wallet) return;
+    
+    document.getElementById('edit-wallet-id').value = walletId;
+    document.getElementById('edit-wallet-icon').value = wallet.icon;
+    document.getElementById('edit-wallet-name').value = wallet.name;
+    
+    document.getElementById('edit-wallet-modal').style.display = 'flex';
+}
+
+// Đóng modal chỉnh sửa ví
+function closeEditWalletModal() {
+    document.getElementById('edit-wallet-modal').style.display = 'none';
+}
+
+// Xử lý lưu chỉnh sửa ví
+function handleEditWallet(e) {
+    e.preventDefault();
+    
+    var walletId = document.getElementById('edit-wallet-id').value;
+    var newIcon = document.getElementById('edit-wallet-icon').value.trim() || '💰';
+    var newName = document.getElementById('edit-wallet-name').value.trim();
+    
+    if (!newName) {
+        alert('Vui lòng nhập tên ví!');
+        return;
+    }
+    
+    // Cập nhật ví trong danh sách
+    wallets = wallets.map(function(w) {
+        if (w.id === walletId) {
+            return { id: w.id, icon: newIcon, name: newName };
+        }
+        return w;
+    });
+    
+    updateSettings('wallets', wallets);
+    closeEditWalletModal();
 }
 
 
@@ -321,35 +480,138 @@ function calculateSummary() {
     }
 }
 
-function renderTransactions() {
-    transactionTableBody.innerHTML = '';
+// --- 10. LOGIC LỊCH SỬ GIAO DỊCH THEO NGÀY ---
+
+function selectDateForHistory(dateStr) {
+    selectedDate = dateStr;
     
-    var filteredTransactions = getFilteredTransactions();
-    filteredTransactions.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+    // Hiển thị thông tin ngày đã chọn
+    var dateObj = new Date(dateStr);
+    var dayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+    document.getElementById('selected-date-text').textContent = '📅 ' + dayNames[dateObj.getDay()] + ', ' + dateObj.getDate() + '/' + (dateObj.getMonth() + 1) + '/' + dateObj.getFullYear();
+    
+    // Hiển thị section chi tiết giao dịch
+    document.getElementById('transaction-detail-section').style.display = 'block';
+    
+    // Cập nhật ngày trong form Thêm Giao Dịch Mới
+    setSelectedDate(dateStr);
+    
+    // Cập nhật highlight ngày trong lịch
+    renderCalendar();
+    
+    renderTransactionsForDate(dateStr);
+}
 
-    filteredTransactions.forEach(function(t) {
-        var row = transactionTableBody.insertRow();
+function renderTransactionsForDate(dateStr) {
+    var list = document.getElementById('transaction-list');
+    var summaryEl = document.getElementById('selected-date-summary');
+    
+    // Lọc giao dịch theo ngày
+    var dayTransactions = getFilteredTransactions().filter(function(t) {
+        return t.date === dateStr;
+    });
+    
+    // Sắp xếp theo thời gian (mới nhất trước)
+    dayTransactions.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+    
+    // Tính tổng
+    var totalIncome = 0;
+    var totalExpense = 0;
+    dayTransactions.forEach(function(t) {
+        if (t.type === 'income') {
+            totalIncome += t.amount;
+        } else {
+            totalExpense += t.amount;
+        }
+    });
+    
+    // Hiển thị tóm tắt
+    summaryEl.innerHTML = '';
+    if (totalIncome > 0) {
+        var incomeSpan = document.createElement('span');
+        incomeSpan.className = 'summary-item income';
+        incomeSpan.textContent = '📈 Thu: ' + formatCurrency(totalIncome);
+        summaryEl.appendChild(incomeSpan);
+    }
+    if (totalExpense > 0) {
+        var expenseSpan = document.createElement('span');
+        expenseSpan.className = 'summary-item expense';
+        expenseSpan.textContent = '📉 Chi: ' + formatCurrency(totalExpense);
+        summaryEl.appendChild(expenseSpan);
+    }
+    if (dayTransactions.length > 0) {
+        var countSpan = document.createElement('span');
+        countSpan.className = 'summary-item';
+        countSpan.textContent = '📝 ' + dayTransactions.length + ' giao dịch';
+        summaryEl.appendChild(countSpan);
+    }
+    
+    // Render danh sách giao dịch
+    list.innerHTML = '';
+    
+    if (dayTransactions.length === 0) {
+        var emptyState = document.createElement('div');
+        emptyState.className = 'empty-state';
+        emptyState.innerHTML = '<div class="empty-icon">📭</div><p>Không có giao dịch nào trong ngày này</p>';
+        list.appendChild(emptyState);
+        return;
+    }
+    
+    dayTransactions.forEach(function(t) {
+        var card = document.createElement('div');
+        card.className = 'transaction-card ' + t.type;
         
-        var walletCell = row.insertCell();
-        walletCell.textContent = getWalletName(t.wallet);
-        walletCell.className = 'wallet-cell';
+        // Icon
+        var icon = document.createElement('div');
+        icon.className = 'transaction-icon';
+        icon.textContent = t.type === 'income' ? '💰' : '💸';
+        card.appendChild(icon);
         
-        var typeCell = row.insertCell();
-        typeCell.textContent = t.type === 'income' ? 'THU' : 'CHI';
-        typeCell.className = t.type === 'income' ? 'transaction-income' : 'transaction-expense';
-
-        row.insertCell().textContent = t.date;
-        row.insertCell().textContent = t.description;
-        row.insertCell().textContent = formatCurrency(t.amount);
-        row.insertCell().textContent = t.category;
-        row.insertCell().textContent = t.source;
+        // Details
+        var details = document.createElement('div');
+        details.className = 'transaction-details';
         
-        var actionCell = row.insertCell();
-        var deleteButton = document.createElement('button');
-        deleteButton.textContent = 'Xóa';
-        deleteButton.className = 'delete-btn';
-        deleteButton.setAttribute('data-id', t.id);
-        deleteButton.addEventListener('click', function() {
+        var desc = document.createElement('div');
+        desc.className = 'transaction-description';
+        desc.textContent = t.description;
+        details.appendChild(desc);
+        
+        var meta = document.createElement('div');
+        meta.className = 'transaction-meta';
+        meta.innerHTML = '<span>' + t.category + '</span><span>' + t.source + '</span>';
+        details.appendChild(meta);
+        
+        card.appendChild(details);
+        
+        // Amount
+        var amount = document.createElement('div');
+        amount.className = 'transaction-amount';
+        amount.textContent = (t.type === 'income' ? '+' : '-') + formatCurrency(t.amount);
+        card.appendChild(amount);
+        
+        // Action buttons
+        var actions = document.createElement('div');
+        actions.className = 'transaction-actions';
+        
+        // Edit button
+        var editBtn = document.createElement('button');
+        editBtn.className = 'edit-btn';
+        editBtn.textContent = 'Sửa';
+        editBtn.setAttribute('data-id', t.id);
+        editBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var id = this.getAttribute('data-id');
+            openEditTransactionModal(id);
+        });
+        actions.appendChild(editBtn);
+        
+        // Delete button
+        var deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.textContent = 'Xóa';
+        deleteBtn.setAttribute('data-id', t.id);
+        deleteBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
             var id = this.getAttribute('data-id');
             if (confirm('Bạn có chắc muốn xóa giao dịch này?')) {
                 transactionsCol.doc(id).delete()
@@ -362,8 +624,143 @@ function renderTransactions() {
                     });
             }
         });
-        actionCell.appendChild(deleteButton);
+        actions.appendChild(deleteBtn);
+        card.appendChild(actions);
+        
+        list.appendChild(card);
     });
+}
+
+// --- MODAL CHỈNH SỬA GIAO DỊCH ---
+
+// Khởi tạo date picker cho modal edit
+function initEditDatePicker() {
+    var yearSelect = document.getElementById('edit-date-year');
+    var currentYear = new Date().getFullYear();
+    yearSelect.innerHTML = '';
+    for (var y = currentYear - 5; y <= currentYear + 2; y++) {
+        var option = document.createElement('option');
+        option.value = y;
+        option.textContent = y;
+        yearSelect.appendChild(option);
+    }
+    
+    // Event listeners
+    document.getElementById('edit-date-month').addEventListener('change', updateEditDaysInMonth);
+    document.getElementById('edit-date-year').addEventListener('change', updateEditDaysInMonth);
+}
+
+function updateEditDaysInMonth() {
+    var daySelect = document.getElementById('edit-date-day');
+    var month = parseInt(document.getElementById('edit-date-month').value);
+    var year = parseInt(document.getElementById('edit-date-year').value);
+    var currentDay = parseInt(daySelect.value) || 1;
+    
+    var daysInMonth = new Date(year, month, 0).getDate();
+    
+    daySelect.innerHTML = '';
+    for (var d = 1; d <= daysInMonth; d++) {
+        var option = document.createElement('option');
+        option.value = d;
+        option.textContent = String(d).padStart(2, '0');
+        daySelect.appendChild(option);
+    }
+    
+    daySelect.value = currentDay > daysInMonth ? daysInMonth : currentDay;
+}
+
+// Mở modal chỉnh sửa giao dịch
+function openEditTransactionModal(transactionId) {
+    var transaction = transactions.find(function(t) { return t.id === transactionId; });
+    if (!transaction) return;
+    
+    // Khởi tạo date picker nếu chưa có
+    if (document.getElementById('edit-date-year').options.length === 0) {
+        initEditDatePicker();
+    }
+    
+    // Cập nhật category và source options
+    var editCategorySelect = document.getElementById('edit-category');
+    var editSourceSelect = document.getElementById('edit-source');
+    
+    editCategorySelect.innerHTML = '';
+    categories.forEach(function(cat) {
+        var option = new Option(cat, cat);
+        editCategorySelect.add(option);
+    });
+    
+    editSourceSelect.innerHTML = '';
+    sources.forEach(function(src) {
+        var option = new Option(src, src);
+        editSourceSelect.add(option);
+    });
+    
+    // Điền dữ liệu vào form
+    document.getElementById('edit-transaction-id').value = transactionId;
+    document.getElementById('edit-type').value = transaction.type;
+    document.getElementById('edit-amount').value = transaction.amount;
+    document.getElementById('edit-description').value = transaction.description;
+    document.getElementById('edit-category').value = transaction.category;
+    document.getElementById('edit-source').value = transaction.source;
+    
+    // Điền ngày
+    var dateParts = transaction.date.split('-');
+    document.getElementById('edit-date-year').value = parseInt(dateParts[0]);
+    document.getElementById('edit-date-month').value = parseInt(dateParts[1]);
+    updateEditDaysInMonth();
+    document.getElementById('edit-date-day').value = parseInt(dateParts[2]);
+    
+    document.getElementById('edit-transaction-modal').style.display = 'flex';
+}
+
+// Đóng modal chỉnh sửa giao dịch
+function closeEditTransactionModal() {
+    document.getElementById('edit-transaction-modal').style.display = 'none';
+}
+
+// Xử lý lưu chỉnh sửa giao dịch
+function handleEditTransaction(e) {
+    e.preventDefault();
+    
+    var transactionId = document.getElementById('edit-transaction-id').value;
+    var day = document.getElementById('edit-date-day').value;
+    var month = document.getElementById('edit-date-month').value;
+    var year = document.getElementById('edit-date-year').value;
+    var dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+    
+    var updatedData = {
+        type: document.getElementById('edit-type').value,
+        date: dateStr,
+        amount: parseFloat(document.getElementById('edit-amount').value),
+        description: document.getElementById('edit-description').value,
+        category: document.getElementById('edit-category').value,
+        source: document.getElementById('edit-source').value
+    };
+    
+    if (isNaN(updatedData.amount) || updatedData.amount <= 0) {
+        alert("Số tiền không hợp lệ!");
+        return;
+    }
+    
+    transactionsCol.doc(transactionId).update(updatedData)
+        .then(function() {
+            console.log('Đã cập nhật giao dịch thành công!');
+            closeEditTransactionModal();
+        })
+        .catch(function(error) {
+            console.error("Lỗi khi cập nhật giao dịch: ", error);
+            alert("Lỗi khi cập nhật giao dịch.");
+        });
+}
+
+function closeDateDetail() {
+    selectedDate = null;
+    
+    // Ẩn section chi tiết giao dịch
+    document.getElementById('transaction-detail-section').style.display = 'none';
+    
+    // Cập nhật lịch để bỏ highlight
+    renderCalendar();
 }
 
 function updateSelectOptions() {
@@ -429,7 +826,7 @@ function handleAddTransaction(e) {
     var newTransaction = {
         wallet: document.getElementById('wallet').value,
         type: document.getElementById('type').value,
-        date: document.getElementById('date').value,
+        date: getSelectedDate(),
         amount: parseFloat(document.getElementById('amount').value),
         description: document.getElementById('description').value,
         category: document.getElementById('category').value,
@@ -451,7 +848,7 @@ function handleAddTransaction(e) {
         });
 
     e.target.reset(); 
-    document.getElementById('date').valueAsDate = new Date();
+    initDatePicker(); // Reset date picker về ngày hiện tại
     document.getElementById('wallet').value = currentWallet;
 }
 
@@ -536,6 +933,14 @@ function renderCalendar() {
     for (var day = 1; day <= daysInMonth; day++) {
         var dayElement = document.createElement('div');
         dayElement.className = 'calendar-day current-month';
+        
+        // Đánh dấu ngày đang được chọn
+        if (selectedDate) {
+            var selDate = new Date(selectedDate);
+            if (selDate.getFullYear() === year && selDate.getMonth() === month && selDate.getDate() === day) {
+                dayElement.classList.add('selected');
+            }
+        }
 
         var dayNumber = document.createElement('span');
         dayNumber.className = 'day-number';
@@ -559,6 +964,19 @@ function renderCalendar() {
                 dayElement.appendChild(expenseSpan);
             }
         }
+        
+        // Thêm style clickable
+        dayElement.style.cursor = 'pointer';
+        
+        // Click vào ngày để xem chi tiết giao dịch
+        (function(d, y, m) {
+            dayElement.addEventListener('click', function() {
+                var dateStr = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                selectDateForHistory(dateStr);
+                // Scroll đến phần chi tiết giao dịch
+                document.getElementById('transaction-detail-section').scrollIntoView({ behavior: 'smooth' });
+            });
+        })(day, year, month);
         
         calendarGrid.appendChild(dayElement);
     }
