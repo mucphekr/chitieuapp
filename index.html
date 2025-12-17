@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sổ Tay Chi Tiêu Gia Đình</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Firebase SDK (Compat version - hoạt động khi mở trực tiếp) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+    <header>
+        <h1>💰 Tài sản 💰</h1>
+        <p>Theo dõi Thu Nhập và Chi Tiêu hàng ngày cho cả hai vợ chồng.</p>
+    </header>
+
+    <main>
+
+        <!-- Wallet Selector Section -->
+        <section class="wallet-section">
+            <h2>👛 Chọn Ví Chi Tiêu</h2>
+            <div class="wallet-tabs">
+                <button class="wallet-tab active" data-wallet="chung">
+                    🏠 Ví Chung
+                </button>
+                <button class="wallet-tab" data-wallet="chong">
+                    👨 Mực Phệ
+                </button>
+                <button class="wallet-tab" data-wallet="vo">
+                    👩 Gấu Chó
+                </button>
+            </div>
+            <div class="wallet-info">
+                <span id="current-wallet-name">Đang xem: 🏠 Ví Chung</span>
+            </div>
+        </section>
+
+        <section class="summary-section">
+            <h2>Tổng Quan Tài Chính</h2>
+            <div class="summary-grid">
+                <div class="summary-card income-total">
+                    <h3>Tổng Thu Nhập</h3>
+                    <p id="total-income-summary">₩0</p>
+                </div>
+                <div class="summary-card expense-total">
+                    <h3>Tổng Chi Tiêu</h3>
+                    <p id="total-expense-summary">₩0</p>
+                </div>
+                <div class="summary-card net-balance">
+                    <h3>Số Dư Cuối</h3>
+                    <p id="net-balance-summary">₩0</p>
+                </div>
+            </div>
+        </section>
+        
+        <section class="calendar-section">
+            <h2>📅 Lịch Theo Dõi Tháng</h2>
+            <div class="calendar-controls">
+                <button id="prev-month">← Tháng Trước</button>
+                <h3 id="current-month-display">Tháng X Năm Y</h3>
+                <button id="next-month">Tháng Sau →</button>
+            </div>
+            <div id="calendar-grid" class="calendar-grid">
+            </div>
+        </section>
+
+        <section class="input-section">
+            <h2>📝 Thêm Giao Dịch Mới</h2>
+            <form id="add-transaction-form">
+                <div class="form-group">
+                    <label for="wallet">Ví Chi Tiêu:</label>
+                    <select id="wallet" required>
+                        <option value="chung">🏠 Ví Chung</option>
+                        <option value="chong">👨 Mực Phệ</option>
+                        <option value="vo">👩 Gấu Chó</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="type">Loại Giao Dịch:</label>
+                    <select id="type" required>
+                        <option value="expense">Chi Tiêu</option>
+                        <option value="income">Thu Nhập</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="date">Ngày:</label>
+                    <input type="date" id="date" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="amount">Số Tiền (₩ Won):</label>
+                    <input type="number" id="amount" placeholder="50000" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Mô Tả:</label>
+                    <input type="text" id="description" placeholder="Ăn trưa công ty" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="category">Danh Mục (Thu/Chi):</label>
+                    <select id="category" required>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="source">Nguồn Tiền (Hoặc Nguồn Thu):</label>
+                    <select id="source" required>
+                    </select>
+                </div>
+
+                <button type="submit" class="submit-btn">Ghi Lại Giao Dịch</button>
+            </form>
+        </section>
+
+        <section class="controls-section">
+            <h2>Thiết Lập Danh Mục</h2>
+            <div class="control-container">
+                <div>
+                    <h3>Thêm Danh Mục (Thu/Chi)</h3>
+                    <form id="add-category-form">
+                        <input type="text" id="new-category" placeholder="Ví dụ: Lương, Tiền thuê nhà" required>
+                        <button type="submit">Thêm</button>
+                    </form>
+                    <div id="category-list" class="tag-list"></div>
+                </div>
+
+                <div>
+                    <h3>Thêm Nguồn (Tiền/Thu)</h3>
+                    <form id="add-source-form">
+                        <input type="text" id="new-source" placeholder="Ví dụ: Thẻ ATM, Nguồn phụ" required>
+                        <button type="submit">Thêm</button>
+                    </form>
+                    <div id="source-list" class="tag-list"></div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="list-section">
+            <h2>📊 Lịch Sử Giao Dịch</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ví</th>
+                        <th>Loại</th>
+                        <th>Ngày</th>
+                        <th>Mô Tả</th>
+                        <th>Số Tiền</th>
+                        <th>Danh Mục</th>
+                        <th>Nguồn</th>
+                        <th>Hành Động</th>
+                    </tr>
+                </thead>
+                <tbody id="transaction-table-body">
+                </tbody>
+            </table>
+        </section>
+        
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Ứng dụng theo dõi tài chính gia đình</p>
+        <p>Dữ liệu được lưu trữ và đồng bộ bằng Firebase Firestore.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

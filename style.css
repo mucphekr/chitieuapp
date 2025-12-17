@@ -1,0 +1,560 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+    margin: 0;
+    padding: 0;
+    line-height: 1.4;
+    font-size: 14px;
+}
+
+header {
+    background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+    color: white;
+    padding: 12px 15px;
+    text-align: center;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.3em;
+}
+
+header p {
+    margin: 4px 0 0;
+    font-size: 0.85em;
+    opacity: 0.9;
+}
+
+main {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 8px;
+}
+
+section {
+    background-color: white;
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+h2 {
+    color: #5a67d8;
+    border-bottom: 2px solid #edf2f7;
+    padding-bottom: 8px;
+    margin: 0 0 10px 0;
+    font-size: 1.1em;
+}
+
+/* --- Wallet Section --- */
+.wallet-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px;
+}
+
+.wallet-section h2 {
+    color: white;
+    border-bottom-color: rgba(255, 255, 255, 0.3);
+    margin-bottom: 10px;
+    font-size: 1em;
+}
+
+.wallet-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.wallet-tab {
+    padding: 10px 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    flex: 1;
+    min-width: 80px;
+    text-align: center;
+}
+
+.wallet-tab:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.wallet-tab.active {
+    background: white;
+    color: #667eea;
+    border-color: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.wallet-info {
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    font-size: 0.85em;
+}
+
+/* --- Summary Section --- */
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.summary-card {
+    text-align: center;
+    padding: 10px 6px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.summary-card h3 {
+    margin: 0;
+    font-size: 0.7em;
+    color: #555;
+    font-weight: 500;
+}
+
+.summary-card p {
+    font-size: 1em;
+    font-weight: bold;
+    margin: 4px 0 0 0;
+}
+
+.income-total { 
+    background: linear-gradient(135deg, #e6ffed 0%, #c6f6d5 100%); 
+    border: 1px solid #48bb78; 
+}
+.income-total p { color: #22543d; }
+
+.expense-total { 
+    background: linear-gradient(135deg, #fed7d7 0%, #feb2b2 100%); 
+    border: 1px solid #fc8181; 
+}
+.expense-total p { color: #742a2a; }
+
+.net-balance { 
+    background: linear-gradient(135deg, #bee3f8 0%, #90cdf4 100%); 
+    border: 1px solid #4299e1; 
+}
+.net-balance p { color: #2a4365; }
+.net-balance.negative p { color: #c53030; }
+
+/* --- Calendar Section --- */
+.calendar-section {
+    padding: 10px;
+}
+
+.calendar-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 5px;
+}
+
+.calendar-controls button {
+    padding: 8px 10px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.75em;
+}
+
+.calendar-controls h3 {
+    margin: 0;
+    font-size: 1em;
+    color: #5a67d8;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+    text-align: center;
+}
+
+.day-header {
+    font-weight: bold;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 6px 2px;
+    border-radius: 4px;
+    font-size: 0.7em;
+}
+
+.calendar-day {
+    padding: 4px 2px;
+    border: 1px solid #e2e8f0;
+    min-height: 50px;
+    background-color: #fff;
+    border-radius: 4px;
+    font-size: 0.75em;
+}
+
+.calendar-day.current-month {
+    background-color: #fafafa;
+}
+
+.day-number {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 2px;
+    color: #4a5568;
+    font-size: 0.85em;
+}
+
+.day-income {
+    color: #38a169;
+    font-weight: bold;
+    font-size: 0.6em;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.day-expense {
+    color: #e53e3e;
+    font-weight: bold;
+    font-size: 0.6em;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- Form Styles --- */
+.input-section {
+    padding: 12px;
+}
+
+.form-group {
+    margin-bottom: 10px;
+}
+
+label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 600;
+    color: #4a5568;
+    font-size: 0.85em;
+}
+
+input[type="date"],
+input[type="number"],
+input[type="text"],
+select {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 16px; /* Prevent zoom on iOS */
+    transition: border-color 0.2s;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.submit-btn {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 600;
+    width: 100%;
+    margin-top: 5px;
+}
+
+.submit-btn:active {
+    transform: scale(0.98);
+}
+
+/* --- Controls Section --- */
+.controls-section {
+    padding: 12px;
+}
+
+.control-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.control-container > div {
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.control-container h3 {
+    margin: 0 0 8px 0;
+    color: #5a67d8;
+    font-size: 0.9em;
+}
+
+#add-category-form, #add-source-form {
+    display: flex;
+    gap: 8px;
+}
+
+#add-category-form input, #add-source-form input {
+    flex-grow: 1;
+}
+
+#add-category-form button, #add-source-form button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.tag-list {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.tag-list span {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 15px;
+    font-size: 0.8em;
+    display: flex;
+    align-items: center;
+}
+
+.tag-list .remove-tag {
+    margin-left: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* --- Table Styles --- */
+.list-section {
+    padding: 10px;
+    overflow-x: auto;
+}
+
+.wallet-cell {
+    font-weight: 600;
+    color: #5a67d8;
+    font-size: 0.8em;
+}
+
+.transaction-income { 
+    color: #38a169; 
+    font-weight: bold;
+    background: #e6ffed;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: 0.75em;
+}
+
+.transaction-expense { 
+    color: #e53e3e; 
+    font-weight: bold;
+    background: #fed7d7;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: 0.75em;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8em;
+    min-width: 600px;
+}
+
+th, td {
+    border: 1px solid #e2e8f0;
+    padding: 8px 6px;
+    text-align: left;
+}
+
+th {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-weight: 600;
+    font-size: 0.85em;
+    position: sticky;
+    top: 0;
+}
+
+tr:nth-child(even) {
+    background-color: #f8fafc;
+}
+
+.delete-btn {
+    background: linear-gradient(135deg, #fc8181 0%, #f56565 100%);
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.8em;
+}
+
+.delete-btn:active {
+    transform: scale(0.95);
+}
+
+/* --- Footer --- */
+footer {
+    background: rgba(0, 0, 0, 0.2);
+    color: white;
+    text-align: center;
+    padding: 12px;
+    font-size: 0.8em;
+}
+
+footer p {
+    margin: 3px 0;
+    opacity: 0.9;
+}
+
+/* === RESPONSIVE - Tablet === */
+@media (min-width: 600px) {
+    body {
+        font-size: 15px;
+    }
+    
+    main {
+        max-width: 800px;
+        padding: 15px;
+    }
+    
+    section {
+        padding: 18px;
+        margin-bottom: 15px;
+    }
+    
+    .summary-card p {
+        font-size: 1.3em;
+    }
+    
+    .calendar-day {
+        min-height: 70px;
+        padding: 6px;
+    }
+    
+    .day-income, .day-expense {
+        font-size: 0.7em;
+    }
+    
+    .control-container {
+        flex-direction: row;
+    }
+    
+    .control-container > div {
+        flex: 1;
+    }
+}
+
+/* === RESPONSIVE - Desktop === */
+@media (min-width: 900px) {
+    body {
+        font-size: 16px;
+    }
+    
+    main {
+        max-width: 1000px;
+        padding: 20px;
+    }
+    
+    section {
+        padding: 22px;
+        margin-bottom: 20px;
+    }
+    
+    header {
+        padding: 18px;
+    }
+    
+    header h1 {
+        font-size: 1.8em;
+    }
+    
+    .wallet-tab {
+        flex: 0 1 auto;
+        padding: 12px 24px;
+    }
+    
+    .summary-card {
+        padding: 18px;
+    }
+    
+    .summary-card h3 {
+        font-size: 0.9em;
+    }
+    
+    .summary-card p {
+        font-size: 1.6em;
+    }
+    
+    .calendar-day {
+        min-height: 80px;
+        padding: 8px;
+    }
+    
+    .day-income, .day-expense {
+        font-size: 0.75em;
+    }
+    
+    table {
+        font-size: 0.9em;
+    }
+}
+
+/* === iOS Safari fixes === */
+@supports (-webkit-touch-callout: none) {
+    input, select, button {
+        -webkit-appearance: none;
+    }
+}
+
+/* Smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Hide scrollbar but allow scroll */
+.list-section::-webkit-scrollbar {
+    height: 4px;
+}
+
+.list-section::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 2px;
+}
