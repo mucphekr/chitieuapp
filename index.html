@@ -12,8 +12,8 @@
 <body>
 
     <header>
-        <h1>💰 Tài sản 💰</h1>
-        <p>Theo dõi Thu Nhập và Chi Tiêu hàng ngày cho cả hai vợ chồng.</p>
+        <h1>💰 Sổ Tay Tài Chính Gia Đình</h1>
+        <p>Theo dõi Thu Nhập và Chi Tiêu hàng ngày</p>
     </header>
 
     <main>
@@ -21,19 +21,19 @@
         <!-- Wallet Selector Section -->
         <section class="wallet-section">
             <h2>👛 Chọn Ví Chi Tiêu</h2>
-            <div class="wallet-tabs">
-                <button class="wallet-tab active" data-wallet="chung">
-                    🏠 Ví Chung
-                </button>
-                <button class="wallet-tab" data-wallet="chong">
-                    👨 Mực Phệ
-                </button>
-                <button class="wallet-tab" data-wallet="vo">
-                    👩 Gấu Chó
-                </button>
+            <div class="wallet-tabs" id="wallet-tabs">
+                <!-- Các ví sẽ được render động từ Firebase -->
             </div>
             <div class="wallet-info">
-                <span id="current-wallet-name">Đang xem: 🏠 Ví Chung</span>
+                <span id="current-wallet-name">Đang xem: ---</span>
+            </div>
+            <!-- Thêm/Xóa ví -->
+            <div class="wallet-management">
+                <form id="add-wallet-form">
+                    <input type="text" id="new-wallet-icon" placeholder="Icon (vd: 👨)" maxlength="2" style="width: 50px; text-align: center;">
+                    <input type="text" id="new-wallet-name" placeholder="Tên ví mới" required>
+                    <button type="submit">+ Thêm</button>
+                </form>
             </div>
         </section>
 
@@ -72,9 +72,7 @@
                 <div class="form-group">
                     <label for="wallet">Ví Chi Tiêu:</label>
                     <select id="wallet" required>
-                        <option value="chung">🏠 Ví Chung</option>
-                        <option value="chong">👨 Mực Phệ</option>
-                        <option value="vo">👩 Gấu Chó</option>
+                        <!-- Options sẽ được render động -->
                     </select>
                 </div>
 
