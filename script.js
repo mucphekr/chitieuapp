@@ -1,4 +1,4 @@
-// script.js - SỬ DỤNG FIREBASE COMPAT (hoạt động khi mở trực tiếp trên trình duyệt)
+// script.js - SỬ DỤNG FIREBASE COMPAT + QUẢN LÝ VÍ ĐỘNG
 
 // 1. CẤU HÌNH FIREBASE
 const firebaseConfig = {
@@ -23,22 +23,14 @@ const settingsDoc = db.collection('settings').doc('appData');
 let transactions = []; 
 let categories = [];
 let sources = [];
-let currentWallet = 'chung'; // Ví hiện tại đang xem
-
-// Lấy tên ví từ HTML
-function getWalletName(walletId) {
-    const tab = document.querySelector('.wallet-tab[data-wallet="' + walletId + '"]');
-    if (tab) {
-        return tab.textContent.trim();
-    }
-    const option = document.querySelector('#wallet option[value="' + walletId + '"]');
-    return option ? option.textContent.trim() : walletId;
-}
+let wallets = []; // Danh sách ví động
+let currentWallet = ''; // Ví hiện tại đang xem
 
 const transactionTableBody = document.getElementById('transaction-table-body');
 const categorySelect = document.getElementById('category');
 const sourceSelect = document.getElementById('source');
 const walletSelect = document.getElementById('wallet');
+const walletTabsContainer = document.getElementById('wallet-tabs');
 
 // Biến cho Summary
 const totalIncomeSummary = document.getElementById('total-income-summary');
@@ -52,8 +44,7 @@ const currentMonthDisplay = document.getElementById('current-month-display');
 const calendarGrid = document.getElementById('calendar-grid');
 
 // Biến cho Wallet
-const walletTabs = document.querySelectorAll('.wallet-tab');
-const currentWalletName = document.getElementById('current-wallet-name');
+const currentWalletNameEl = document.getElementById('current-wallet-name');
 
 
 // --- 4. LOGIC KHỞI TẠO ---
@@ -73,38 +64,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Thêm event listeners cho các form
     setupEventListeners();
-    
-    // Setup wallet tabs
-    setupWalletTabs();
 });
 
 function setupEventListeners() {
     document.getElementById('add-transaction-form').addEventListener('submit', handleAddTransaction);
     document.getElementById('add-category-form').addEventListener('submit', handleAddCategory);
     document.getElementById('add-source-form').addEventListener('submit', handleAddSource);
-}
-
-function setupWalletTabs() {
-    walletTabs.forEach(function(tab) {
-        tab.addEventListener('click', function() {
-            // Xóa class active từ tất cả tabs
-            walletTabs.forEach(function(t) { t.classList.remove('active'); });
-            // Thêm class active vào tab được click
-            tab.classList.add('active');
-            
-            // Cập nhật ví hiện tại
-            currentWallet = tab.dataset.wallet;
-            currentWalletName.textContent = 'Đang xem: ' + tab.textContent.trim();
-            
-            // Cập nhật wallet selector trong form
-            walletSelect.value = currentWallet;
-            
-            // Render lại giao diện
-            renderTransactions();
-            calculateSummary();
-            renderCalendar();
-        });
-    });
+    document.getElementById('add-wallet-form').addEventListener('submit', handleAddWallet);
 }
 
 
@@ -115,7 +81,7 @@ function setupRealtimeListeners() {
         transactions = [];
         snapshot.forEach(function(doc) {
             var data = doc.data();
-            // Nếu giao dịch cũ không có wallet, gán mặc định là 'chung'
+            // Nếu giao dịch cũ không có wallet, gán mặc định
             if (!data.wallet) {
                 data.wallet = 'chung';
             }
@@ -127,26 +93,196 @@ function setupRealtimeListeners() {
         renderCalendar();
     });
 
-    // 2. Lắng nghe Dữ liệu Cài Đặt (Danh mục/Nguồn)
+    // 2. Lắng nghe Dữ liệu Cài Đặt (Danh mục/Nguồn/Ví)
     settingsDoc.onSnapshot(function(docSnap) {
         if (docSnap.exists) {
             var data = docSnap.data();
             categories = data.categories || [];
             sources = data.sources || [];
+            wallets = data.wallets || [
+                { id: 'chung', icon: '🏠', name: 'Ví Chung' }
+            ];
+            
+            // Nếu chưa có ví được chọn, chọn ví đầu tiên
+            if (!currentWallet && wallets.length > 0) {
+                currentWallet = wallets[0].id;
+            }
+            
             updateSelectOptions();
             renderTags();
+            renderWalletTabs();
+            renderWalletSelect();
+            
+            // Render lại khi có thay đổi
+            renderTransactions();
+            calculateSummary();
+            renderCalendar();
         } else {
-            // Lần đầu tiên chạy, tạo dữ liệu mặc định trên đám mây
+            // Lần đầu tiên chạy, tạo dữ liệu mặc định
             settingsDoc.set({
                 categories: ["Ăn uống", "Lương", "Đi lại", "Mua sắm", "Tiền nhà"],
-                sources: ["Tiền mặt", "Thẻ ATM", "Chuyển khoản"]
+                sources: ["Tiền mặt", "Thẻ ATM", "Chuyển khoản"],
+                wallets: [
+                    { id: 'chung', icon: '🏠', name: 'Ví Chung' },
+                    { id: 'chong', icon: '👨', name: 'Mực Phệ' },
+                    { id: 'vo', icon: '👩', name: 'Gấu Chó' }
+                ]
             });
         }
     });
 }
 
 
-// --- 6. TÍNH TOÁN & HIỂN THỊ CHUNG ---
+// --- 6. QUẢN LÝ VÍ ---
+
+// Render các tab ví
+function renderWalletTabs() {
+    walletTabsContainer.innerHTML = '';
+    
+    wallets.forEach(function(wallet) {
+        var tab = document.createElement('button');
+        tab.className = 'wallet-tab' + (wallet.id === currentWallet ? ' active' : '');
+        tab.setAttribute('data-wallet', wallet.id);
+        tab.innerHTML = wallet.icon + ' ' + wallet.name + 
+            '<span class="delete-wallet" data-wallet-id="' + wallet.id + '" title="Xóa ví">×</span>';
+        
+        // Click vào tab để chọn ví
+        tab.addEventListener('click', function(e) {
+            if (e.target.classList.contains('delete-wallet')) {
+                return; // Bỏ qua nếu click vào nút xóa
+            }
+            selectWallet(wallet.id);
+        });
+        
+        walletTabsContainer.appendChild(tab);
+    });
+    
+    // Thêm event listener cho nút xóa ví
+    document.querySelectorAll('.delete-wallet').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var walletId = this.getAttribute('data-wallet-id');
+            deleteWallet(walletId);
+        });
+    });
+    
+    // Cập nhật tên ví đang xem
+    updateCurrentWalletDisplay();
+}
+
+// Render dropdown chọn ví trong form
+function renderWalletSelect() {
+    walletSelect.innerHTML = '';
+    wallets.forEach(function(wallet) {
+        var option = new Option(wallet.icon + ' ' + wallet.name, wallet.id);
+        walletSelect.add(option);
+    });
+    walletSelect.value = currentWallet;
+}
+
+// Chọn ví
+function selectWallet(walletId) {
+    currentWallet = walletId;
+    
+    // Cập nhật UI tabs
+    document.querySelectorAll('.wallet-tab').forEach(function(tab) {
+        tab.classList.remove('active');
+        if (tab.getAttribute('data-wallet') === walletId) {
+            tab.classList.add('active');
+        }
+    });
+    
+    // Cập nhật dropdown
+    walletSelect.value = walletId;
+    
+    // Cập nhật display
+    updateCurrentWalletDisplay();
+    
+    // Render lại giao diện
+    renderTransactions();
+    calculateSummary();
+    renderCalendar();
+}
+
+// Cập nhật hiển thị ví đang xem
+function updateCurrentWalletDisplay() {
+    var wallet = wallets.find(function(w) { return w.id === currentWallet; });
+    if (wallet) {
+        currentWalletNameEl.textContent = 'Đang xem: ' + wallet.icon + ' ' + wallet.name;
+    }
+}
+
+// Lấy tên ví theo ID
+function getWalletName(walletId) {
+    var wallet = wallets.find(function(w) { return w.id === walletId; });
+    if (wallet) {
+        return wallet.icon + ' ' + wallet.name;
+    }
+    return walletId;
+}
+
+// Thêm ví mới
+function handleAddWallet(e) {
+    e.preventDefault();
+    
+    var icon = document.getElementById('new-wallet-icon').value.trim() || '💰';
+    var name = document.getElementById('new-wallet-name').value.trim();
+    
+    if (!name) {
+        alert('Vui lòng nhập tên ví!');
+        return;
+    }
+    
+    // Tạo ID từ tên (loại bỏ dấu, chuyển thường, thay space bằng _)
+    var id = name.toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9_]/g, '');
+    
+    // Kiểm tra trùng
+    if (wallets.some(function(w) { return w.id === id; })) {
+        alert('Ví này đã tồn tại!');
+        return;
+    }
+    
+    wallets.push({ id: id, icon: icon, name: name });
+    updateSettings('wallets', wallets);
+    
+    e.target.reset();
+}
+
+// Xóa ví
+function deleteWallet(walletId) {
+    if (wallets.length <= 1) {
+        alert('Phải có ít nhất 1 ví!');
+        return;
+    }
+    
+    var wallet = wallets.find(function(w) { return w.id === walletId; });
+    var walletName = wallet ? wallet.icon + ' ' + wallet.name : walletId;
+    
+    // Đếm số giao dịch trong ví này
+    var transactionCount = transactions.filter(function(t) { return t.wallet === walletId; }).length;
+    
+    var confirmMsg = 'Bạn có chắc muốn xóa ví "' + walletName + '"?';
+    if (transactionCount > 0) {
+        confirmMsg += '\n\n⚠️ Ví này có ' + transactionCount + ' giao dịch. Các giao dịch sẽ KHÔNG bị xóa nhưng sẽ không hiển thị.';
+    }
+    
+    if (confirm(confirmMsg)) {
+        wallets = wallets.filter(function(w) { return w.id !== walletId; });
+        updateSettings('wallets', wallets);
+        
+        // Nếu đang xem ví bị xóa, chuyển sang ví đầu tiên
+        if (currentWallet === walletId && wallets.length > 0) {
+            selectWallet(wallets[0].id);
+        }
+    }
+}
+
+
+// --- 7. TÍNH TOÁN & HIỂN THỊ CHUNG ---
 
 // Đổi đơn vị tiền sang Won (KRW)
 function formatCurrency(amount) {
@@ -162,7 +298,6 @@ function calculateSummary() {
     var totalIncome = 0;
     var totalExpense = 0;
     
-    // Chỉ tính cho ví hiện tại
     var filteredTransactions = getFilteredTransactions();
     
     filteredTransactions.forEach(function(t) {
@@ -189,14 +324,12 @@ function calculateSummary() {
 function renderTransactions() {
     transactionTableBody.innerHTML = '';
     
-    // Lọc và sắp xếp giao dịch theo ví hiện tại
     var filteredTransactions = getFilteredTransactions();
     filteredTransactions.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
 
     filteredTransactions.forEach(function(t) {
         var row = transactionTableBody.insertRow();
         
-        // Cột Ví
         var walletCell = row.insertCell();
         walletCell.textContent = getWalletName(t.wallet);
         walletCell.className = 'wallet-cell';
@@ -273,7 +406,7 @@ function createTagElement(name, type) {
     removeButton.addEventListener('click', function() {
         var tagName = this.getAttribute('data-name');
         var tagType = this.getAttribute('data-type');
-        if (confirm('Bạn có chắc muốn xóa "' + tagName + '" khỏi danh sách ' + tagType + ' không?')) {
+        if (confirm('Bạn có chắc muốn xóa "' + tagName + '"?')) {
             if (tagType === 'category') {
                 var updatedCategories = categories.filter(function(c) { return c !== tagName; });
                 updateSettings('categories', updatedCategories);
@@ -288,9 +421,8 @@ function createTagElement(name, type) {
 }
 
 
-// --- 7. LOGIC THÊM / XÓA GIAO DỊCH ---
+// --- 8. LOGIC THÊM / XÓA GIAO DỊCH ---
 
-// Thêm giao dịch
 function handleAddTransaction(e) {
     e.preventDefault();
 
@@ -309,7 +441,6 @@ function handleAddTransaction(e) {
         return;
     }
 
-    // Lưu lên Firebase
     transactionsCol.add(newTransaction)
         .then(function() {
             console.log('Đã thêm giao dịch thành công!');
@@ -321,11 +452,9 @@ function handleAddTransaction(e) {
 
     e.target.reset(); 
     document.getElementById('date').valueAsDate = new Date();
-    // Giữ lại ví đang chọn
     document.getElementById('wallet').value = currentWallet;
 }
 
-// Hàm chung để cập nhật cài đặt
 function updateSettings(field, newArray) {
     var updateData = {};
     updateData[field] = newArray;
@@ -333,7 +462,6 @@ function updateSettings(field, newArray) {
         .catch(function(error) { console.error('Lỗi khi cập nhật ' + field + ': ', error); });
 }
 
-// Thêm Danh Mục mới
 function handleAddCategory(e) {
     e.preventDefault();
     var newCat = document.getElementById('new-category').value.trim();
@@ -344,7 +472,6 @@ function handleAddCategory(e) {
     }
 }
 
-// Thêm Nguồn Tiền mới
 function handleAddSource(e) {
     e.preventDefault();
     var newSrc = document.getElementById('new-source').value.trim();
@@ -356,7 +483,7 @@ function handleAddSource(e) {
 }
 
 
-// --- 8. LOGIC LỊCH THÁNG ---
+// --- 9. LOGIC LỊCH THÁNG ---
 
 function changeMonth(step) {
     currentMonth.setMonth(currentMonth.getMonth() + step);
@@ -369,7 +496,6 @@ function renderCalendar() {
 
     currentMonthDisplay.textContent = 'Tháng ' + (month + 1) + ' Năm ' + year;
 
-    // 1. Dữ liệu tổng hợp Thu/Chi theo ngày (chỉ cho ví hiện tại)
     var dailySummary = {};
     var currentMonthTransactions = getFilteredTransactions().filter(function(t) {
         var tDate = new Date(t.date);
@@ -388,7 +514,6 @@ function renderCalendar() {
         }
     });
 
-    // 2. Tạo cấu trúc lịch
     calendarGrid.innerHTML = '';
     var dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
@@ -402,14 +527,12 @@ function renderCalendar() {
     var firstDayOfMonth = new Date(year, month, 1).getDay();
     var daysInMonth = new Date(year, month + 1, 0).getDate();
 
-    // 3. Đổ ngày trống (padding)
     for (var i = 0; i < firstDayOfMonth; i++) {
         var emptyDay = document.createElement('div');
         emptyDay.className = 'calendar-day';
         calendarGrid.appendChild(emptyDay);
     }
 
-    // 4. Đổ ngày trong tháng
     for (var day = 1; day <= daysInMonth; day++) {
         var dayElement = document.createElement('div');
         dayElement.className = 'calendar-day current-month';
