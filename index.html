@@ -2,8 +2,27 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sổ Tay Chi Tiêu Gia Đình</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Ứng dụng theo dõi thu nhập và chi tiêu gia đình">
+    <meta name="theme-color" content="#4a90a4">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Chi Tiêu">
+    <meta name="application-name" content="Chi Tiêu">
+    <meta name="msapplication-TileColor" content="#1a1a2e">
+    <meta name="msapplication-config" content="none">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Icons cho các thiết bị -->
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+    <link rel="apple-touch-icon" href="icons/icon.svg">
+    
     <link rel="stylesheet" href="style.css">
     <!-- Firebase SDK (Compat version - hoạt động khi mở trực tiếp) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -275,5 +294,28 @@
     </footer>
 
     <script src="script.js"></script>
+    
+    <!-- Đăng ký Service Worker cho PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(function(registration) {
+                        console.log('✅ Service Worker đã đăng ký thành công:', registration.scope);
+                    })
+                    .catch(function(error) {
+                        console.log('❌ Service Worker đăng ký thất bại:', error);
+                    });
+            });
+        }
+        
+        // Xử lý sự kiện cài đặt PWA
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            deferredPrompt = e;
+            console.log('📱 App có thể được cài đặt!');
+        });
+    </script>
 </body>
 </html>
