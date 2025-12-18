@@ -360,6 +360,10 @@ function handleAddWallet(e) {
     }
     
     wallets.push({ id: id, icon: icon, name: name });
+    
+    // Tự động chọn ví mới vừa tạo để có thể thêm giao dịch ngay
+    currentWallet = id;
+    
     updateSettings('wallets', wallets);
     
     e.target.reset();
