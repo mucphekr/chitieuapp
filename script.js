@@ -973,8 +973,6 @@ function renderCalendar() {
             dayElement.addEventListener('click', function() {
                 var dateStr = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
                 selectDateForHistory(dateStr);
-                // Scroll đến phần chi tiết giao dịch
-                document.getElementById('transaction-detail-section').scrollIntoView({ behavior: 'smooth' });
             });
         })(day, year, month);
         
