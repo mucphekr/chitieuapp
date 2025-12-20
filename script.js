@@ -1,4 +1,4 @@
-// script.js - SỬ DỤNG FIREBASE COMPAT + QUẢN LÝ VÍ ĐỘNG
+// script.js - SỬ DỤNG FIREBASE COMPAT + QUẢN LÝ VÍ ĐỘNG + AUTHENTICATION
 
 // 1. CẤU HÌNH FIREBASE
 const firebaseConfig = {
@@ -14,6 +14,229 @@ const firebaseConfig = {
 // 2. KHỞI TẠO FIREBASE
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const auth = firebase.auth();
+
+// === AUTHENTICATION LOGIC ===
+
+// Tài khoản được phép đăng nhập (CỐ ĐỊNH)
+const ALLOWED_USERNAME = 'vietnhung';
+const ALLOWED_PASSWORD = 'Baotram@2023';
+const AUTH_EMAIL = 'vietnhung@chitieuapp.com'; // Email cho Firebase Auth
+
+// DOM Elements cho Auth (sẽ được gán sau khi DOM load)
+var authScreen, appContent, loginForm, authError, userEmailDisplay, logoutBtn;
+
+// Hiển thị lỗi
+function showAuthError(message) {
+    if (authError) {
+        authError.textContent = message;
+        authError.style.display = 'block';
+        setTimeout(function() {
+            authError.style.display = 'none';
+        }, 5000);
+    }
+}
+
+// Tải thông tin đăng nhập đã lưu
+function loadSavedCredentials() {
+    var savedUsername = localStorage.getItem('saved_username');
+    var savedPassword = localStorage.getItem('saved_password');
+    var rememberMe = localStorage.getItem('remember_me') === 'true';
+    
+    var usernameInput = document.getElementById('login-username');
+    var passwordInput = document.getElementById('login-password');
+    var rememberCheckbox = document.getElementById('remember-me');
+    
+    if (rememberMe && savedUsername && savedPassword && usernameInput && passwordInput) {
+        usernameInput.value = savedUsername;
+        passwordInput.value = savedPassword;
+        if (rememberCheckbox) rememberCheckbox.checked = true;
+    }
+}
+
+// Lưu thông tin đăng nhập
+function saveCredentials(username, password) {
+    localStorage.setItem('saved_username', username);
+    localStorage.setItem('saved_password', password);
+    localStorage.setItem('remember_me', 'true');
+}
+
+// Xóa thông tin đăng nhập đã lưu
+function clearSavedCredentials() {
+    localStorage.removeItem('saved_username');
+    localStorage.removeItem('saved_password');
+    localStorage.removeItem('remember_me');
+}
+
+// Khởi tạo Authentication khi DOM sẵn sàng
+document.addEventListener('DOMContentLoaded', function() {
+    // Gán DOM Elements
+    authScreen = document.getElementById('auth-screen');
+    appContent = document.getElementById('app-content');
+    loginForm = document.getElementById('login-form');
+    authError = document.getElementById('auth-error');
+    userEmailDisplay = document.getElementById('user-email');
+    logoutBtn = document.getElementById('logout-btn');
+    
+    // Tải credentials đã lưu
+    loadSavedCredentials();
+    
+    // Toggle hiển thị mật khẩu
+    var togglePasswordBtn = document.getElementById('toggle-password');
+    var passwordInput = document.getElementById('login-password');
+    
+    if (togglePasswordBtn && passwordInput) {
+        togglePasswordBtn.addEventListener('click', function() {
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                this.querySelector('.eye-icon').textContent = '🙈';
+                this.classList.add('active');
+            } else {
+                passwordInput.type = 'password';
+                this.querySelector('.eye-icon').textContent = '👁️';
+                this.classList.remove('active');
+            }
+        });
+    }
+    
+    // Xử lý đăng nhập
+    if (loginForm) {
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            var username = document.getElementById('login-username').value.trim().toLowerCase();
+            var password = document.getElementById('login-password').value;
+            var rememberCheckbox = document.getElementById('remember-me');
+            var rememberMe = rememberCheckbox ? rememberCheckbox.checked : false;
+            
+            // Kiểm tra tài khoản và mật khẩu
+            if (username !== ALLOWED_USERNAME || password !== ALLOWED_PASSWORD) {
+                showAuthError('❌ Tài khoản hoặc mật khẩu không đúng!');
+                return;
+            }
+            
+            // Đăng nhập với Firebase Auth
+            auth.signInWithEmailAndPassword(AUTH_EMAIL, ALLOWED_PASSWORD)
+                .then(function(userCredential) {
+                    console.log('Đăng nhập thành công!');
+                    // Lưu thông tin nếu chọn "Ghi nhớ"
+                    if (rememberMe) {
+                        saveCredentials(username, password);
+                    } else {
+                        clearSavedCredentials();
+                    }
+                })
+                .catch(function(error) {
+                    console.log('Firebase Auth Error:', error.code);
+                    
+                    // Nếu tài khoản chưa tồn tại hoặc credential không hợp lệ, tự động tạo (chỉ lần đầu)
+                    if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+                        console.log('Đang tạo tài khoản mới...');
+                        auth.createUserWithEmailAndPassword(AUTH_EMAIL, ALLOWED_PASSWORD)
+                            .then(function(userCredential) {
+                                console.log('Tạo tài khoản và đăng nhập thành công!');
+                                // Lưu thông tin nếu chọn "Ghi nhớ"
+                                if (rememberMe) {
+                                    saveCredentials(username, password);
+                                } else {
+                                    clearSavedCredentials();
+                                }
+                            })
+                            .catch(function(createError) {
+                                console.log('Create Error:', createError.code);
+                                if (createError.code === 'auth/email-already-in-use') {
+                                    // Tài khoản đã tồn tại nhưng mật khẩu sai
+                                    showAuthError('❌ Mật khẩu không đúng!');
+                                } else {
+                                    showAuthError('Lỗi hệ thống! Vui lòng thử lại.');
+                                    console.error(createError);
+                                }
+                            });
+                    } else if (error.code === 'auth/wrong-password') {
+                        showAuthError('❌ Mật khẩu không đúng!');
+                    } else if (error.code === 'auth/too-many-requests') {
+                        showAuthError('⏳ Quá nhiều lần thử! Vui lòng đợi vài phút.');
+                    } else {
+                        showAuthError('Lỗi đăng nhập! Vui lòng thử lại.');
+                        console.error(error);
+                    }
+                });
+        });
+    }
+    
+    // Xử lý đăng xuất
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function() {
+            if (confirm('Bạn có chắc muốn đăng xuất?')) {
+                auth.signOut()
+                    .then(function() {
+                        console.log('Đã đăng xuất!');
+                        // Reset app state
+                        appInitialized = false;
+                    })
+                    .catch(function(error) {
+                        console.error('Lỗi khi đăng xuất:', error);
+                        alert('Lỗi khi đăng xuất! Vui lòng thử lại.');
+                    });
+            }
+        });
+    }
+});
+
+// Lắng nghe trạng thái đăng nhập
+auth.onAuthStateChanged(function(user) {
+    // Đợi DOM sẵn sàng
+    if (!authScreen) {
+        authScreen = document.getElementById('auth-screen');
+        appContent = document.getElementById('app-content');
+        userEmailDisplay = document.getElementById('user-email');
+    }
+    
+    if (user) {
+        // Đã đăng nhập - hiển thị app
+        if (authScreen) authScreen.style.display = 'none';
+        if (appContent) appContent.style.display = 'block';
+        
+        // Hiển thị tên người dùng
+        if (userEmailDisplay) {
+            userEmailDisplay.textContent = '👤 ' + ALLOWED_USERNAME;
+        }
+        
+        // Khởi tạo app
+        initializeApp();
+    } else {
+        // Chưa đăng nhập - hiển thị màn hình đăng nhập
+        if (authScreen) authScreen.style.display = 'flex';
+        if (appContent) appContent.style.display = 'none';
+    }
+});
+
+// Hàm khởi tạo app (chỉ chạy khi đã đăng nhập)
+var appInitialized = false;
+
+function initializeApp() {
+    if (appInitialized) return; // Tránh khởi tạo nhiều lần
+    appInitialized = true;
+    
+    // Lắng nghe dữ liệu từ Firebase
+    setupRealtimeListeners(); 
+    
+    // Khởi tạo lịch
+    renderCalendar();
+    
+    // Khởi tạo date picker
+    initDatePicker();
+    
+    // Sự kiện chuyển tháng (Calendar)
+    document.getElementById('prev-month').addEventListener('click', function() { changeMonth(-1); });
+    document.getElementById('next-month').addEventListener('click', function() { changeMonth(1); });
+    
+    // Sự kiện đóng chi tiết ngày
+    document.getElementById('close-date-detail').addEventListener('click', function() { closeDateDetail(); });
+
+    // Thêm event listeners cho các form
+    setupEventListeners();
+}
 
 // Tham chiếu đến collections và documents
 const transactionsCol = db.collection('transactions');
@@ -49,26 +272,7 @@ const currentWalletNameEl = document.getElementById('current-wallet-name');
 
 
 // --- 4. LOGIC KHỞI TẠO ---
-document.addEventListener('DOMContentLoaded', function() {
-    // Lắng nghe dữ liệu từ Firebase
-    setupRealtimeListeners(); 
-    
-    // Khởi tạo lịch
-    renderCalendar();
-    
-    // Khởi tạo date picker
-    initDatePicker();
-    
-    // Sự kiện chuyển tháng (Calendar)
-    document.getElementById('prev-month').addEventListener('click', function() { changeMonth(-1); });
-    document.getElementById('next-month').addEventListener('click', function() { changeMonth(1); });
-    
-    // Sự kiện đóng chi tiết ngày
-    document.getElementById('close-date-detail').addEventListener('click', function() { closeDateDetail(); });
-
-    // Thêm event listeners cho các form
-    setupEventListeners();
-});
+// (Đã chuyển sang hàm initializeApp() - được gọi sau khi đăng nhập thành công)
 
 // --- HÀM KHỞI TẠO DATE PICKER ---
 function initDatePicker() {

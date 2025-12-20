@@ -27,12 +27,59 @@
     <!-- Firebase SDK (Compat version - hoạt động khi mở trực tiếp) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 </head>
 <body>
 
+    <!-- Login Screen Overlay -->
+    <div id="auth-screen" class="auth-overlay">
+        <div class="auth-container">
+            <div class="auth-header">
+                <h1>💰 Sổ Tay Tài Chính</h1>
+                <p>🔐 Vui lòng đăng nhập để tiếp tục</p>
+            </div>
+            
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form">
+                <div class="form-group">
+                    <label for="login-username">👤 Tài khoản</label>
+                    <input type="text" id="login-username" placeholder="Nhập tài khoản" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">🔒 Mật khẩu</label>
+                    <div class="password-input-wrapper">
+                        <input type="password" id="login-password" placeholder="Nhập mật khẩu" required>
+                        <button type="button" class="toggle-password" id="toggle-password" title="Hiện/Ẩn mật khẩu">
+                            <span class="eye-icon">👁️</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group remember-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="remember-me" checked>
+                        <span class="checkmark"></span>
+                        💾 Ghi nhớ đăng nhập
+                    </label>
+                </div>
+                <button type="submit" class="auth-btn login-btn">🔓 Đăng Nhập</button>
+            </form>
+            
+            <div id="auth-error" class="auth-error" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Main App Content (Hidden until logged in) -->
+    <div id="app-content" style="display: none;">
+
     <header>
-        <h1>💰 Sổ Tay Tài Chính Gia Đình</h1>
-        <p>Theo dõi Thu Nhập và Chi Tiêu hàng ngày</p>
+        <div class="header-content">
+            <h1>💰 Sổ Tay Tài Chính Gia Đình</h1>
+            <p>Theo dõi Thu Nhập và Chi Tiêu hàng ngày</p>
+        </div>
+        <div class="user-info">
+            <span id="user-email"></span>
+            <button id="logout-btn" class="logout-btn">🚪 Đăng xuất</button>
+        </div>
     </header>
 
     <main>
@@ -292,6 +339,8 @@
         <p>&copy; 2025 Ứng dụng theo dõi tài chính gia đình</p>
         <p>Dữ liệu được lưu trữ và đồng bộ bằng Firebase Firestore.</p>
     </footer>
+
+    </div><!-- End of #app-content -->
 
     <script src="script.js"></script>
     
